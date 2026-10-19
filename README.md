@@ -37,13 +37,14 @@ python [main.py]
 |`demo.py` | Essai pour que j'apprenne le pygame
 | `mm.py` | Bibliothèque du jeu (fonctions de base, dont la fonction `distance`) |
 | `[main.py]` | Programme principal |
-| `rapport/` | Rapport de mon avancement (pseudo-code, tableau des variables, tests) |
+| `[mastermind_compte_rendu.pdf]` | Rapport de mon avancement (pseudo-code, tableau des variables, tests)|
+| `compte_rendu.tex` | Code du rapport sous format LaTeX |
 
 ## Ce que j'ai appris
 - Utiliser pygame pour afficher une interface simple
 - Découper un programme en fonctions avec paramètres et valeurs retournées
 - Tester son code et documenter son travail
-
+- Comment créer un pdf en LaTeX
 ## Kataline
 
 BUT1 Informatique, IUT de Maubeuge
