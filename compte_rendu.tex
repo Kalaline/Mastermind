@@ -1,0 +1,387 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- Langue et encodage ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% ---------- Mise en page ----------
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{subcaption}
+
+% ---------- Code Python ----------
+\usepackage{listings}
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{orange!80!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  showstringspaces=false,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {à}{{\`a}}1 {ê}{{\^e}}1 {É}{{\'E}}1 {î}{{\^i}}1
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \includegraphics[height=2.5cm]{logo1.png}
+    \hfill
+    \includegraphics[height=2.5cm]{logo2.png}
+
+    \vspace*{4cm}
+
+    \begin{center}
+        {\Huge \textbf{Mastermind en Python}} \\[0.5cm]
+        {\Large Compte rendu de SAE} \\[3cm]
+
+        {\large Malkhasyan David} \\[0.3cm]
+        {\large C1} \\[0.3cm]
+        {\large \today}
+    \end{center}
+\end{titlepage}
+\tableofcontents
+\newpage
+
+% =====================================================
+\section{Introduction}
+Le \textbf{Mastermind} est un jeu qui consiste à trouver en 15 coups l'alignement des couleurs qui nous est inconnu. Il y a un total de 8 couleurs qu'on peut utiliser, le secret se trouve dans une ligne de 5 couleurs. Pour aider le joueur à gagner, à chaque proposition on lui dit combien de couleurs sont à la bonne place, et combien sont présentes dans la combinaison secrète mais à une autre position, pour qu'il se corrige, sachant qu'il est possible d'utiliser plusieurs fois la même couleur. Les pions mal placés seront en noir et ceux bien placés seront en blanc. Pour créer ce jeu, j'ai utilisé Python, la bibliothèque pygame et un fichier fourni avec le sujet pour la partie pygame (\texttt{mm.py}). L'objectif de cette SAE est de confronter le développeur à la requête d'un client, puis de développer des fonctions avec les quelques indications qui ont été données.
+
+% =====================================================
+\section{Découpage en fonctions}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{>{\ttfamily}l l l p{5cm}}
+\toprule
+\textrm{\textbf{Fonction}} & \textbf{Entrées} & \textbf{Sortie} & \textbf{Rôle} \\
+\midrule
+generer\_combinaison & aucune & liste de 5 couleurs & tire la combinaison secrète \\
+calculer\_resultat & 2 listes & tuple (bien, mal) & compare proposition et secrète \\
+est\_gagne & tuple & booléen & vrai si 5 bien placés \\
+manche\_finie & tuple, 2 entiers & booléen & vrai si gagné ou coups épuisés \\
+afficher\_dialogue & fenêtre, texte & rien & boîte de dialogue semi-transparente \\
+afficher\_fin & fenêtre, booléen, entier & rien & choisit et affiche le message de fin \\
+principale & aucune & rien & programme principal \\
+\bottomrule
+\end{tabular}
+\caption{Fonctions du programme}
+\end{table}
+
+J'ai découpé le programme en plusieurs fonctions pour éviter qu'il y ait des problèmes dans mon code. Imaginons que j'aie une seule fonction principale : je pourrais rencontrer des bugs beaucoup plus fréquemment, et il serait compliqué de trouver l'erreur sur 100 lignes. Avec des fonctions séparées, le programme principal ne fait qu'appeler les fonctions, ce qui cause moins d'erreurs récurrentes. Les tests sont aussi plus simples : je peux tester chaque fonction sans lancer le jeu. Enfin, une fonction peut être réutilisée : par exemple, \texttt{est\_gagne} est utilisée à la fois dans \texttt{manche\_finie} et dans \texttt{principale}.
+
+% =====================================================
+\section{Algorithme de calcul du résultat}
+
+\begin{lstlisting}
+def calculer_resultat(proposition, secrete):
+    bien_place = 0
+    for i in range(len(proposition)):
+        if proposition[i] == secrete[i]:
+            bien_place = bien_place + 1
+    commun = 0
+    for couleur in mm.TabCouleur:
+        commun = commun + min(proposition.count(couleur), secrete.count(couleur))
+    mal_place = commun - bien_place
+    return bien_place, mal_place
+\end{lstlisting}
+
+\subsection*{Les bien placés}
+
+Un pion est bien placé lorsqu'il a la même couleur que dans la combinaison
+secrète \textbf{et} qu'il est à la même position. J'initialise la variable
+\texttt{bien\_place} à 0 : elle sert de compteur. La boucle parcourt les
+positions de 0 à 4 et compare \texttt{proposition[i]} avec
+\texttt{secrete[i]}, avec le même indice \texttt{i} des deux côtés.
+Lorsque les deux couleurs sont égales, on ajoute 1 au compteur.
+Chaque bien placé correspond à un pion \textbf{blanc} sur le plateau.
+
+\subsection*{Les mal placés}
+
+La variable \texttt{commun} compte le nombre de couleurs que la proposition et la secrète ont en commun, sans regarder les positions. Sur le plateau, c'est le total des pions : blancs + noirs.
+
+Pour la calculer, la boucle parcourt la liste \texttt{mm.TabCouleur}, qui contient les 8 couleurs du jeu. À chaque tour, on compte combien de fois la couleur apparaît dans la proposition (\texttt{proposition.count(couleur)}) et combien de fois elle apparaît dans la secrète (\texttt{secrete.count(couleur)}). On garde le plus petit de ces deux nombres grâce à \texttt{min}, et on l'ajoute à \texttt{commun}.
+
+On garde le plus petit des deux nombres car si la secrète a 2 Rouges et que la proposition en a 4, seuls 2 Rouges peuvent correspondre.
+
+Enfin, \texttt{commun} contient aussi les bien placés, donc on calcule \texttt{commun - bien\_place} pour connaître le nombre de mal placés.
+Le résultat correspond au nombre de pions \textbf{noirs}.
+
+\subsection*{Exemple}
+
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+ & pos 0 & pos 1 & pos 2 & pos 3 & pos 4 \\
+\midrule
+Secrète     & Rouge & Rouge & Bleu  & Vert  & Noir \\
+Proposition & Rouge & Bleu  & Rouge & Rouge & Rouge \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Bien placés :} on compare les couleurs position par position.
+Seule la position 0 a la même couleur (Rouge) dans les deux combinaisons,
+donc \texttt{bien\_place} $= 1$.
+
+\textbf{Couleurs en commun :} pour chaque couleur, on garde le minimum
+entre la proposition et la secrète.
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Couleur & dans la proposition & dans la secrète & minimum \\
+\midrule
+Rouge & 4 & 2 & 2 \\
+Bleu  & 1 & 1 & 1 \\
+Vert  & 0 & 1 & 0 \\
+Noir  & 0 & 1 & 0 \\
+Autres & 0 & 0 & 0 \\
+\midrule
+\multicolumn{3}{l}{\textbf{Total : \texttt{commun}}} & \textbf{3} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Mal placés :} \texttt{mal\_place} $= 3 - 1 = 2$.
+
+La fonction renvoie donc \texttt{(1, 2)} : un pion blanc et deux pions noirs.
+
+\subsection*{Pourquoi une double boucle ne fonctionnait pas}
+
+Dans ma première version, j'utilisais deux boucles imbriquées qui
+comparaient chaque position de la proposition avec \textbf{toutes} les
+positions de la secrète. Prenons cet exemple :
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & pos 0 & pos 1 \\
+\midrule
+Secrète     & Bleu  & Rouge \\
+Proposition & Rouge & Bleu  \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Faire une double boucle entraîne une erreur : une couleur est comptée comme bien placée dès qu'elle se trouve \textbf{n'importe où} dans la secrète. Par exemple, \texttt{proposition[0]} vaut Rouge : la deuxième boucle parcourt toutes les positions de la secrète et trouve que \texttt{proposition[0] == secrete[1]} (Rouge). On ajoute donc 1 à \texttt{bien\_place}, alors que le Rouge n'est pas à la bonne position. Avec cet exemple, la double boucle trouve 2 bien placés au lieu de 0.
+
+% =====================================================
+\section{Programme principal}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l >{\ttfamily}l}
+\toprule
+\textbf{Étape du sujet} & \textrm{\textbf{Code}} \\
+\midrule
+a. afficher l'IHM & mm.afficherPlateau, mm.afficherChoixCouleur \\
+b. combinaison secrète & secrete = generer\_combinaison() \\
+c. boucle de jeu & while not manche\_finie(...) \\
+\quad i. proposition & mm.construireProposition(fenetre, nb\_coups) \\
+\quad ii. résultat & calculer\_resultat(proposition, secrete) \\
+\quad iii. affichage & mm.afficherResultat(fenetre, resultat, nb\_coups) \\
+d. message de fin & mm.afficherSecret, afficher\_fin \\
+e. fermeture & boucle sur pygame.event.get() \\
+\bottomrule
+\end{tabular}
+\caption{Correspondance entre le sujet et le code}
+\end{table}
+
+\subsection*{Décalage des lignes du plateau}
+
+Lors du premier test, les cercles de la première proposition s'affichaient entre la case du secret et le plateau, au lieu d'être dans les cases. Toutes les lignes étaient décalées d'un cran vers le haut.
+
+Ce décalage vient de \texttt{mm.py} : la fonction \texttt{afficherCombinaison} place les cercles à la hauteur $y = 40 + 40 \times (\text{ligne} - 1)$, alors que les cases du plateau commencent à $y = 60$. Résultat :
+\begin{itemize}
+    \item avec \texttt{ligne = 1}, les cercles sont à $y = 40$, donc hors du plateau ;
+    \item avec \texttt{ligne = 2}, ils sont à $y = 80$, donc au milieu de la première case.
+\end{itemize}
+La ligne 1 de \texttt{mm.py} correspond donc à la zone du secret, et le plateau commence à la ligne 2.
+
+Pour corriger ce problème, j'ai fait démarrer \texttt{nb\_coups} à 1 au lieu de 0, et j'ai fixé \texttt{nb\_coups\_max} à 16. Comme \texttt{nb\_coups} augmente au début de chaque tour, le premier coup s'affiche sur la ligne 2 et le dernier sur la ligne 16 : les 15 cases du plateau sont bien utilisées. En contrepartie, \texttt{nb\_coups} a un coup d'avance sur le nombre réel de coups joués, c'est pourquoi j'envoie \texttt{nb\_coups - 1} à \texttt{afficher\_fin}.
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{bug.png}
+        \caption{Avant : cercles hors des cases}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fix.png}
+        \caption{Après correction}
+    \end{subfigure}
+    \caption{Décalage des lignes du plateau}
+\end{figure}
+
+% =====================================================
+\section{Tests}
+
+Pour tester les fonctions sans lancer le jeu, j'ai écrit une fonction \texttt{test} qui appelle chaque fonction avec des valeurs dont je connais le résultat attendu.
+
+\begin{lstlisting}
+def test():
+    print(generer_combinaison())
+
+    # test 1 : tout pareil -> (5, 0)
+    secrete     = [mm.Rouge, mm.Bleu, mm.Vert, mm.Noir, mm.Rose]
+    proposition = [mm.Rouge, mm.Bleu, mm.Vert, mm.Noir, mm.Rose]
+    print(calculer_resultat(proposition, secrete))
+
+    # test 2 : 1 bien place, 2 mal places -> (1, 2)
+    secrete     = [mm.Rouge, mm.Rouge, mm.Bleu, mm.Vert, mm.Noir]
+    proposition = [mm.Rouge, mm.Bleu, mm.Rouge, mm.Rouge, mm.Rouge]
+    print(calculer_resultat(proposition, secrete))
+
+    # test 3 : rien en commun -> (0, 0)
+    secrete     = [mm.Rouge, mm.Rouge, mm.Bleu, mm.Bleu, mm.Vert]
+    proposition = [mm.Noir, mm.Blanc, mm.Gris, mm.Rose, mm.Orange]
+    print(calculer_resultat(proposition, secrete))
+
+    # test 4 : 5 bien places -> True (gagne)
+    print(est_gagne((5, 0)))
+    # test 5 : 3 bien places -> False (pas encore gagne)
+    print(est_gagne((3, 1)))
+
+    # test 6 : gagne au coup 3 -> True (manche finie)
+    print(manche_finie((5, 0), 3, 10))
+    # test 7 : pas gagne mais 10 coups sur 10 -> True (plus de coups)
+    print(manche_finie((2, 1), 10, 10))
+    # test 8 : pas gagne et 3 coups sur 10 -> False (on continue)
+    print(manche_finie((2, 1), 3, 10))
+\end{lstlisting}
+
+Voici ce que la fonction affiche, ligne par ligne :
+
+\begin{lstlisting}[language={}, numbers=none]
+[(255, 0, 127), (255, 0, 127), (0, 0, 255), (225, 127, 0), (255, 255, 255)]
+(5, 0)
+(1, 2)
+(0, 0)
+True
+False
+True
+True
+False
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{generer\_combinaison} renvoie bien une liste de 5 couleurs (sous forme de tuples RGB), différente à chaque exécution. Une même couleur peut apparaître deux fois, ce qui est autorisé.
+    \item \texttt{calculer\_resultat} renvoie \texttt{(5, 0)} quand les deux combinaisons sont identiques, \texttt{(1, 2)} pour l'exemple de la section 3, et \texttt{(0, 0)} quand aucune couleur n'est en commun.
+    \item \texttt{est\_gagne} renvoie \texttt{True} uniquement quand il y a 5 bien placés.
+    \item \texttt{manche\_finie} renvoie \texttt{True} quand le joueur a gagné ou a utilisé tous ses coups, et \texttt{False} sinon.
+\end{itemize}
+
+Tous les résultats obtenus correspondent aux résultats attendus. J'ai ensuite testé le jeu complet en jouant une partie gagnée et une partie perdue (figure ci-dessous).
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{victoire.png}
+        \caption{Victoire}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.45\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{defaite.png}
+        \caption{Défaite}
+    \end{subfigure}
+    \caption{Fins de partie avec la boîte de dialogue et le secret affiché}
+\end{figure}
+
+% =====================================================
+\section{Difficultés rencontrées}
+
+Le tableau suivant résume les principales erreurs rencontrées pendant le développement, leur cause et la correction apportée.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3.6cm} p{5.6cm} p{4.6cm}}
+\toprule
+\textbf{Problème} & \textbf{Cause} & \textbf{Correction} \\
+\midrule
+Plantage dans \texttt{generer\_combinaison}
+& \texttt{liste.append[i]} : crochets au lieu de parenthèses, et ajout de l'indice \texttt{i} au lieu de la couleur
+& \texttt{liste.append(nouveau)} \\
+\addlinespace
+Combinaison de 8 couleurs au lieu de 5
+& \texttt{range(len(mm.TabCouleur))} fait autant de tours qu'il y a de couleurs dans le jeu
+& constante \texttt{taille\_combinaison = 5} \\
+\addlinespace
+\texttt{TypeError} dans \texttt{calculer\_resultat}
+& \texttt{range(proposition)} : \texttt{range} attend un nombre, pas une liste
+& \texttt{range(len(proposition))} \\
+\addlinespace
+Nombre de bien placés faux
+& comparaison des indices \texttt{i} et \texttt{j} au lieu des couleurs, puis double boucle (voir section 3)
+& une seule boucle avec \texttt{proposition[i] == secrete[i]} \\
+\addlinespace
+Nombre de mal placés faux
+& une couleur différente était comptée comme mal placée, même si elle n'existait pas dans la secrète
+& méthode \texttt{commun - bien\_place} \\
+\addlinespace
+Message « ÉCHEC » affiché même en cas de victoire
+& en remplaçant les \texttt{return} par des \texttt{print}, la fonction ne s'arrêtait plus et exécutait aussi la dernière ligne
+& message d'échec placé dans un \texttt{else} aligné avec \texttt{if gagne} \\
+\addlinespace
+\texttt{TypeError: argument 1 must be Surface, not list}
+& \texttt{mm.afficherChoixCouleur(mm.TabCouleur)} : la liste des couleurs donnée à la place de la fenêtre
+& \texttt{mm.afficherChoixCouleur(fenetre)} \\
+\addlinespace
+Légende du plateau coupée
+& fenêtre de 600 $\times$ 650 pixels trop petite pour le plateau et le texte
+& fenêtre de 800 $\times$ 680 pixels \\
+\addlinespace
+Cercles hors des cases
+& décalage d'une ligne dans \texttt{mm.py}
+& voir section 4 \\
+\bottomrule
+\end{tabular}
+\caption{Difficultés rencontrées}
+\end{table}
+
+% À rédiger avec tes mots (3-5 lignes) : ce que ces erreurs t'ont appris.
+% Pistes : lire la dernière ligne d'un message d'erreur pour trouver la cause,
+% regarder le def d'une fonction pour savoir quoi lui donner,
+% tester chaque fonction séparément avec des print avant de tout assembler.
+
+% =====================================================
+\section{Améliorations}
+
+\subsection*{Améliorations réalisées}
+
+\begin{itemize}
+    \item \textbf{Message de fin dans la fenêtre} : au lieu d'afficher le résultat dans le terminal avec \texttt{print}, la fonction \texttt{afficher\_dialogue} dessine une boîte de dialogue en bas de la fenêtre, inspirée des jeux Pokémon.
+    \item \textbf{Fond semi-transparent} : la boîte utilise une surface \texttt{pygame.SRCALPHA} remplie d'un blanc partiellement transparent, ce qui laisse deviner le plateau derrière.
+    \item \textbf{Affichage de la combinaison secrète} à la fin de la partie, avec \texttt{mm.afficherSecret}, pour que le joueur voie la solution.
+    \item \textbf{Messages différents selon le nombre de coups} : un message spécial en 1 coup, un autre en 5 coups ou moins, et un dernier au-delà.
+\end{itemize}
+
+\subsection*{Améliorations possibles}
+
+\begin{itemize}
+    \item Faire apparaître le texte de la boîte de dialogue lettre par lettre, comme dans Pokémon.
+    \item Proposer de rejouer une partie sans relancer le programme.
+    \item Ajouter un mode sans doublons dans la combinaison secrète, avec \texttt{random.sample}.
+    \item Afficher le nombre de coups restants pendant la partie.
+\end{itemize}
+
+% =====================================================
+\section{Conclusion}
+
+% À rédiger.
+
+\end{document}
