@@ -33,12 +33,14 @@ python [main.py]
 ```
 
 ## Structure du projet
+
 | Fichier | Rôle |
-|`demo.py` | Essai pour que j'apprenne le pygame
+|---|---|
+| `demo.py` | Essai pour apprendre pygame |
 | `mm.py` | Bibliothèque du jeu (fonctions de base, dont la fonction `distance`) |
-| `[main.py]` | Programme principal |
-| `[mastermind_compte_rendu.pdf]` | Rapport de mon avancement (pseudo-code, tableau des variables, tests)|
-| `compte_rendu.tex` | Code du rapport sous format LaTeX |
+| `main.py` | Programme principal |
+| `mastermind_compte_rendu.pdf` | Rapport d'avancement (pseudo-code, tableau des variables, tests) |
+| `compte_rendu.tex` | Code source du rapport en LaTeX |
 
 ## Ce que j'ai appris
 - Utiliser pygame pour afficher une interface simple
